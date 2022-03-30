@@ -4,9 +4,9 @@ import torch
 import pandas as pd
 import numpy as np
 import torch.nn.functional as F
-from transformers import DistilBertTokenizerFast, RobertaTokenizerFast
+from transformers import DistilBertTokenizerFast, RobertaTokenizerFast, BertTokenizerFast
 from torch.utils.data import TensorDataset
-from transformers import DistilBertForSequenceClassification, RobertaForSequenceClassification
+from transformers import DistilBertForSequenceClassification, RobertaForSequenceClassification, BertForSequenceClassification
 from torch.utils.data import DataLoader, SequentialSampler
 
 warnings.filterwarnings('ignore')
@@ -67,6 +67,16 @@ class Predictor(object):
                    header=header)
 
     def __get_model_specific_assets(self):
+        if self.model_arch == 'bert':
+            self.tokenizer = (BertTokenizerFast
+                              .from_pretrained(self.model_name,
+                                               do_lower_case=True))
+            self.model = (BertForSequenceClassification.
+                          from_pretrained(self.model_name,
+                                          num_labels=len(self.labels),
+                                          output_attentions=False,
+                                          output_hidden_states=False))
+
         if self.model_arch == 'distilbert':
             self.tokenizer = (DistilBertTokenizerFast
                               .from_pretrained(self.model_name,

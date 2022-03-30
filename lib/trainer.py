@@ -3,13 +3,13 @@ import torch
 import pandas as pd
 import numpy as np
 from tqdm import tqdm
-from transformers import DistilBertTokenizerFast, RobertaTokenizerFast
+from transformers import DistilBertTokenizerFast, RobertaTokenizerFast, BertTokenizerFast
 from torch.utils.data import TensorDataset
-from transformers import DistilBertForSequenceClassification, RobertaForSequenceClassification
+from transformers import DistilBertForSequenceClassification, RobertaForSequenceClassification, BertForSequenceClassification
 from sklearn.model_selection import train_test_split
 from torch.utils.data import DataLoader, RandomSampler, SequentialSampler
 from transformers import AdamW, get_linear_schedule_with_warmup
-from sklearn.metrics import f1_score
+from sklearn.metrics import f1_score, precision_score, recall_score
 
 warnings.filterwarnings('ignore')
 
@@ -46,7 +46,12 @@ class Trainer(object):
     def __f1_score_func(self, preds, labels):
         preds_flat = np.argmax(preds, axis=1).flatten()
         labels_flat = labels.flatten()
-        return f1_score(labels_flat, preds_flat, average='weighted')
+        precision = precision_score(labels_flat, preds_flat, average='macro')
+        recall = recall_score(labels_flat, preds_flat, average='macro')
+        weighted = f1_score(labels_flat, preds_flat, average='weighted')
+        micro = f1_score(labels_flat, preds_flat, average='micro')
+        macro = f1_score(labels_flat, preds_flat, average='macro')
+        return (precision, recall, weighted, micro, macro)
 
     def __evaluate(self, dataloader_val):
         self.model.eval()
@@ -73,6 +78,16 @@ class Trainer(object):
         return loss_val_avg, predictions, true_vals
 
     def __get_model_specific_assets(self):
+        if self.model_arch == 'bert':
+            self.tokenizer = (BertTokenizerFast
+                              .from_pretrained(self.model_name,
+                                               do_lower_case=True))
+            self.model = (BertForSequenceClassification.
+                          from_pretrained(self.model_name,
+                                          num_labels=len(self.labels),
+                                          output_attentions=False,
+                                          output_hidden_states=False))
+
         if self.model_arch == 'distilbert':
             self.tokenizer = (DistilBertTokenizerFast
                               .from_pretrained(self.model_name,
@@ -95,6 +110,7 @@ class Trainer(object):
 
     def __get_data(self):
         self.data = pd.read_csv(self.data_path,
+                                skiprows=1,
                                 names=['text', 'text_label'])
         self.data.dropna(inplace=True)
         possible_labels = self.data.text_label.unique()
@@ -172,6 +188,7 @@ class Trainer(object):
         print(f'Training on: {self.device}')
 
         # Main traning loop
+        header = True
         for epoch in tqdm(range(1, self.epochs+1)):
             self.model.train()
             loss_train_total = 0
@@ -198,30 +215,30 @@ class Trainer(object):
 
             torch.save(self.model.state_dict(),
                        f'{self.out_path}_epoch_{epoch}.model')
-            tqdm.write(f'\nEpoch {epoch}')
             loss_train_avg = loss_train_total/len(dataloader_train)
-            tqdm.write(f'Training loss: {loss_train_avg}')
             (val_loss, predictions,
              true_vals) = self.__evaluate(dataloader_validation)
-            val_f1 = self.__f1_score_func(predictions, true_vals)
-            tqdm.write(f'Validation loss: {val_loss}')
-            tqdm.write(f'F1 Score (Weighted): {val_f1}')
+            pre, rec, f1_w, f1_micro, f1_macro = self.__f1_score_func(predictions, true_vals)
+            if header:
+                print(f'\nEpoch\tTrain loss\tVal loss\tPrecision\tRecall\tF1 (Weighted)\tF1 (Micro)\tF1 (Macro)')
+            print(f'{epoch}\t{loss_train_avg}\t{val_loss}\t{pre}\t{rec}\t{f1_w}\t{f1_micro}\t{f1_macro}')
+            header = False
 
     def run(self):
-        print('Loading data... ', end='', flush=True)
+        print('Loading data...\n')
         self.__get_data()
-        print('[DONE]')
+        print('[DONE]\n')
         
-        print('Collecting assets... ', end='', flush=True)
+        print('Collecting assets...\n')
         self.__get_model_specific_assets()
-        print('[DONE]')
+        print('[DONE]\n')
 
-        print('Preparing data... ', end='', flush=True)
+        print('Preparing data...\n')
         self.__prepare_data()
-        print('[DONE]')
+        print('[DONE]\n')
 
-        print('Training...')
+        print('Training...\n')
         self.__train()
-        print('Final labels:')
+        print('Final labels:\n')
         print(self.labels)
-        print('[DONE]')
+        print('[DONE]\n')
