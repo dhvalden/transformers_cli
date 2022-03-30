@@ -1,0 +1,9 @@
+HF:
+  model_arch: distilbert
+  model_name: distilbert-base-multilingual-cased
+CONFIG:
+  data_path: data/data.csv
+  out_path: models/model1_distilBERT
+  batch_size: 32
+  epochs: 10
+  test_size: 0.20
