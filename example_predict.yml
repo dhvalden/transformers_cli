@@ -1,0 +1,13 @@
+HF:
+  model_arch: distilbert
+  model_name: distilbert-base-uncased
+CONFIG:
+  data_path: data/data_new.csv
+  text_col: 0
+  out_path: data/preds.csv
+  batch_size: 32
+  state_dict_path: models/model1_distilBERT_epoch_5.model
+  labels:
+        label1: 0
+        label2: 1
+        label3: 2
