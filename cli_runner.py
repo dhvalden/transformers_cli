@@ -12,7 +12,11 @@ def main():
     predict_parser = subparsers.add_parser("predict")
 
     train_parser.add_argument("--config", type=str)
+    train_parser.add_argument("--data_path", type=str)
+    train_parser.add_argument("--out_path", type=str)
     predict_parser.add_argument("--config", type=str)
+    predict_parser.add_argument("--data_path", type=str)
+    predict_parser.add_argument("--out_path", type=str)
 
     args = parser.parse_args()
     with open(args.config) as c:
@@ -21,8 +25,14 @@ def main():
     if args.command == "train":
         model_arch = config['HF']['model_arch']
         model_name = config['HF']['model_name']
-        data_path = config['CONFIG']['data_path']
-        out_path = config['CONFIG']['out_path']
+        if args.data_path:
+            data_path = args.data_path
+        else:
+            data_path = config['CONFIG']['data_path']
+        if args.out_path:
+            out_path = args.out_path
+        else:
+            out_path = config['CONFIG']['out_path']
         epochs = int(config['CONFIG']['epochs'])
         batch_size = int(config['CONFIG']['batch_size'])
         test_size = float(config['CONFIG']['test_size'])
@@ -42,8 +52,14 @@ def main():
         state_dict_path = config['CONFIG']['state_dict_path']
         labels = config['CONFIG']['labels']
         text_col = int(config['CONFIG']['text_col'])
-        data_path = config['CONFIG']['data_path']
-        out_path = config['CONFIG']['out_path']
+        if args.data_path:
+            data_path = args.data_path
+        else:
+            data_path = config['CONFIG']['data_path']
+        if args.out_path:
+            out_path = args.out_path
+        else:
+            out_path = config['CONFIG']['out_path']
         batch_size = int(config['CONFIG']['batch_size'])
 
         mypredictor = Predictor(model_arch=model_arch,
